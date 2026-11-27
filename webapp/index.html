@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Котельная</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: #0e1621; --bg2: #17212b; --card: #1c2733; --card2: #243242;
+  --text: #f1f5f9; --muted: #8b9bb0; --line: rgba(255,255,255,.07);
+  --accent: #4aa3ff; --ok: #3ddc84; --warn: #ffb020; --bad: #ff5d6c;
+}
+:root[data-theme="light"] {
+  --bg: #eef2f7; --bg2: #e3e9f1; --card: #ffffff; --card2: #eef2f7;
+  --text: #17212b; --muted: #6b7a8c; --line: rgba(0,0,0,.08);
+  --accent: #1d7fe0; --ok: #1fa85a; --warn: #d98a00; --bad: #d93a4a;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { background: linear-gradient(180deg, var(--bg2), var(--bg) 220px); min-height: 100vh; }
+main { max-width: 460px; margin: 0 auto; padding: 14px 14px 40px; display: grid; gap: 14px; }
+.card { background: var(--card); border-radius: 22px; padding: 18px; border: 1px solid var(--line);
+  box-shadow: 0 8px 30px rgba(0,0,0,.18); animation: pop .35s ease both; }
+@keyframes pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+h2 { margin: 0 0 12px; font-size: 17px; letter-spacing: .3px; display: flex; justify-content: space-between; align-items: center; }
+h2 small { font-weight: 500; font-size: 12px; color: var(--muted); }
+[hidden] { display: none !important; }
+
+.ring { position: relative; width: 210px; height: 210px; margin: 4px auto 10px; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .bg { fill: none; stroke: var(--card2); stroke-width: 14; }
+.ring .fg { fill: none; stroke-width: 14; stroke-linecap: round; transition: stroke-dashoffset .25s linear, stroke .25s linear; }
+.ring .mid { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.ring .big { font-size: 46px; font-weight: 700; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.ring .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.busy .ring .fg { filter: drop-shadow(0 0 8px currentColor); }
+
+.status { text-align: center; min-height: 44px; }
+.status b { display: block; font-size: 16px; }
+.status span { color: var(--muted); font-size: 13px; }
+.status.ok b { color: var(--ok); } .status.err b { color: var(--bad); }
+.bar { height: 6px; border-radius: 3px; background: var(--card2); overflow: hidden; margin: 8px 0 14px; opacity: 0; transition: opacity .2s; }
+.busy .bar { opacity: 1; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width .25s linear; }
+.busy.pumping .bar i { width: 100% !important; background: linear-gradient(90deg, var(--accent), var(--ok), var(--accent)); background-size: 200% 100%; animation: slide 1s linear infinite; }
+@keyframes slide { to { background-position: -200% 0; } }
+
+.pill { display: flex; align-items: center; gap: 10px; background: var(--card2); border-radius: 14px; padding: 10px 14px; margin-bottom: 14px; }
+.pill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.pill.on .dot { background: var(--ok); animation: pulse 1.6s infinite; }
+.pill.na .dot { background: var(--warn); }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(61,220,132,.6); } 100% { box-shadow: 0 0 0 10px rgba(61,220,132,0); } }
+.pill .grow { flex: 1; } .pill small { color: var(--muted); display: block; font-size: 12px; }
+
+button { font: inherit; color: var(--text); background: var(--card2); border: 1px solid var(--line);
+  border-radius: 14px; padding: 13px 10px; cursor: pointer; transition: transform .08s, background .2s, opacity .2s; }
+button:active { transform: scale(.96); }
+button.active { background: var(--accent); border-color: transparent; color: #fff; font-weight: 600; }
+button:disabled { opacity: .45; pointer-events: none; }
+.row2 { display: grid; gap: 8px; margin-bottom: 10px; }
+.temps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.temps button { padding: 14px 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hint { color: var(--muted); font-size: 12px; margin: 12px 2px 0; }
+
+.big-state { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.big-state .emo { font-size: 40px; line-height: 1; }
+.big-state b { font-size: 20px; display: block; }
+.big-state span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.metrics div { background: var(--card2); border-radius: 12px; padding: 10px 6px; text-align: center; }
+.metrics b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+.metrics small { color: var(--muted); font-size: 11px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.na-box { background: var(--card2); border-radius: 14px; padding: 12px 14px; color: var(--muted); }
+.na-box b { color: var(--warn); }
+#denied { text-align: center; padding: 40px 20px; }
+#denied .emo { font-size: 48px; }
+#foot { text-align: center; color: var(--muted); font-size: 12px; }
+
+.sub { color: var(--muted); font-size: 13px; margin: -4px 0 12px; }
+.empty { color: var(--muted); text-align: center; padding: 18px 8px; }
+.sched { display: flex; align-items: center; gap: 12px; background: var(--card2); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
+.sched .time { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 66px; }
+.sched .info { flex: 1; min-width: 0; }
+.sched .info b { display: block; font-size: 14px; }
+.sched .info span { color: var(--muted); font-size: 12px; display: block; }
+.sched.off { opacity: .55; }
+.sw { position: relative; width: 48px; height: 28px; flex: none; padding: 0; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s; }
+.sw.on { background: var(--ok); border-color: transparent; }
+.sw.on::after { transform: translateX(20px); background: #fff; }
+.trash { padding: 8px 10px; background: transparent; border: none; font-size: 18px; flex: none; }
+.add { width: 100%; margin-top: 4px; background: var(--accent); color: #fff; border: none; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button { padding: 10px 14px; border-radius: 12px; }
+.filters { display: flex; gap: 8px; margin-bottom: 12px; }
+.filters button { flex: 1; padding: 9px 6px; font-size: 14px; }
+.day { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; margin: 14px 2px 6px; }
+.ev { display: flex; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); }
+.ev:last-child { border-bottom: none; }
+.ev .t { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 44px; font-size: 13px; padding-top: 1px; }
+.ev .x { flex: 1; word-break: break-word; }
+.ev .w { color: var(--muted); font-size: 12px; display: block; }
+.more { width: 100%; margin-top: 10px; }
+
+#veil { position: fixed; inset: 0; background: rgba(0,0,0,.55); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+#veil.show { opacity: 1; pointer-events: auto; }
+#sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 11; max-height: 92vh; overflow-y: auto; background: var(--card);
+  border-radius: 24px 24px 0 0; padding: 18px 18px 28px; transform: translateY(105%); visibility: hidden; transition: transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s .28s;
+  max-width: 460px; margin: 0 auto; box-shadow: 0 -10px 40px rgba(0,0,0,.35); }
+#sheet.show { transform: none; visibility: visible; transition: transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s; }
+#sheet h3 { margin: 0 0 14px; font-size: 18px; }
+#sheet .lbl { color: var(--muted); font-size: 13px; margin: 16px 2px 8px; font-weight: 600; }
+.opts { display: grid; gap: 8px; }
+.opts button { text-align: left; padding: 14px; }
+.opts button small { display: block; color: var(--muted); font-weight: 400; margin-top: 2px; }
+.opts button.active small { color: rgba(255,255,255,.85); }
+.timepick { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.timepick span { font-size: 30px; font-weight: 700; }
+.timepick select { font: inherit; font-size: 30px; font-weight: 700; text-align: center; text-align-last: center; color: var(--text); background: var(--card2);
+  border: 1px solid var(--line); border-radius: 16px; padding: 12px 8px; width: 110px; font-variant-numeric: tabular-nums; appearance: none; -webkit-appearance: none; }
+input[type=time] { width: 100%; font: inherit; font-size: 30px; font-weight: 700; text-align: center; color: var(--text); background: var(--card2);
+  border: 1px solid var(--line); border-radius: 16px; padding: 12px; font-variant-numeric: tabular-nums; }
+.summary { background: var(--card2); border-radius: 14px; padding: 12px 14px; margin-top: 16px; font-weight: 600; }
+.sheet-btns { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin: 16px -18px -28px; padding: 12px 18px 28px; position: sticky; bottom: -28px; background: var(--card); border-top: 1px solid var(--line); }
+.sheet-btns .save { background: var(--accent); color: #fff; border: none; font-weight: 600; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--text); color: var(--bg); padding: 10px 16px;
+  border-radius: 14px; font-size: 14px; opacity: 0; pointer-events: none; transition: all .25s; z-index: 20; max-width: 90vw; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+<main>
+  <section id="denied" class="card" hidden>
+    <div class="emo">🔐</div>
+    <h2 style="justify-content:center" id="deniedTitle">Нет доступа</h2>
+    <p id="deniedText" style="color:var(--muted)"></p>
+  </section>
+
+  <section id="boiler" class="card" hidden>
+    <h2>🏭 Котельная <small id="role"></small></h2>
+    <div class="ring">
+      <svg viewBox="0 0 200 200"><circle class="bg" cx="100" cy="100" r="86"/><circle class="fg" id="fg" cx="100" cy="100" r="86"/></svg>
+      <div class="mid"><div class="big" id="big">—</div><div class="sub" id="sub">&nbsp;</div></div>
+    </div>
+    <div class="status" id="status"><b>Загрузка…</b></div>
+    <div class="bar"><i id="barfill"></i></div>
+    <div class="pill" id="pump"><span class="dot"></span><div class="grow"><b id="pumpT">Насос</b><small id="pumpS"></small></div></div>
+    <div class="row2">
+      <button data-act="mode_off">⛔️ Выключить котёл и насос</button>
+      <button data-act="mode_self">🏠 Самообогрев котельной</button>
+    </div>
+    <div class="temps" id="temps"></div>
+    <p class="hint">⛔️ котёл и насос выключены · 🏠 котёл 35°, насос выключен · 35°…70° — обогрев храма, насос включается</p>
+  </section>
+
+  <section id="schedule" class="card" hidden>
+    <h2>⏰ Расписание</h2>
+    <div class="sub" id="schedNext"></div>
+    <div id="schedList"></div>
+    <button class="add" id="schedAdd">➕ Добавить расписание</button>
+  </section>
+
+  <section id="relay" class="card" hidden>
+    <h2>⚡️ Реле</h2>
+    <div class="big-state"><div class="emo" id="relayEmo">⚡️</div><div><b id="relayT">…</b><span id="relayS"></span></div></div>
+    <div class="metrics" id="relayM">
+      <div><b id="rV">—</b><small>Вольт</small></div>
+      <div><b id="rA">—</b><small>Ампер</small></div>
+      <div><b id="rW">—</b><small>Ватт</small></div>
+    </div>
+    <div class="pair"><button data-act="relay_on">✅ Включить</button><button data-act="relay_off">❌ Выключить</button></div>
+  </section>
+
+  <section id="history" class="card" hidden>
+    <h2>📜 История</h2>
+    <div class="filters" id="histFilters"></div>
+    <div id="histList"></div>
+    <button class="more" id="histMore" hidden>Показать ещё</button>
+  </section>
+
+  <section id="light" class="card" hidden>
+    <h2>💡 Свет дома</h2>
+    <div class="big-state"><div class="emo" id="lightEmo">💡</div><div><b id="lightT">…</b><span id="lightS"></span></div></div>
+    <div class="metrics" id="lightM">
+      <div><b id="lV">—</b><small>Вольт</small></div>
+      <div><b id="lW">—</b><small>Ватт</small></div>
+      <div><b id="lL">—</b><small>Лампа</small></div>
+    </div>
+    <div class="pair" id="lightBtns"><button data-act="light_on">✅ Лампа вкл</button><button data-act="light_off">❌ Лампа выкл</button></div>
+  </section>
+
+  <div id="veil"></div>
+  <div id="sheet" role="dialog" aria-modal="true">
+    <h3>Новое расписание</h3>
+    <div class="lbl">1. Что сделать</div>
+    <div class="opts" id="fAction">
+      <button data-v="off">⛔️ Выключить котёл и насос</button>
+      <button data-v="self">🏠 Самообогрев котельной<small>котёл 35°, насос выключен</small></button>
+      <button data-v="temple">🔥 Обогрев храма<small>котёл на выбранной температуре, насос включён</small></button>
+    </div>
+    <div id="fTempBox" hidden>
+      <div class="lbl">Температура котла</div>
+      <div class="chips" id="fTemp"></div>
+    </div>
+    <div class="lbl">2. Во сколько</div>
+    <div class="timepick"><select id="fH"></select><span>:</span><select id="fM"></select></div>
+    <div class="lbl">3. По каким дням</div>
+    <div class="chips" id="fDays"></div>
+    <div class="chips" id="fPresets" style="margin-top:8px">
+      <button data-p="all">Каждый день</button><button data-p="work">Будни</button><button data-p="end">Выходные</button>
+    </div>
+    <div class="summary" id="fSummary"></div>
+    <div class="sheet-btns"><button id="fCancel">Отмена</button><button class="save" id="fSave">💾 Сохранить</button></div>
+  </div>
+  <div id="toast"></div>
+  <div id="foot"></div>
+</main>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) {
+  tg.ready(); tg.expand();
+  document.documentElement.dataset.theme = tg.colorScheme === 'light' ? 'light' : 'dark';
+  try { tg.setHeaderColor(tg.colorScheme === 'light' ? '#eef2f7' : '#0e1621'); tg.setBackgroundColor(tg.colorScheme === 'light' ? '#eef2f7' : '#0e1621'); } catch (e) {}
+}
+const $ = id => document.getElementById(id);
+const C = 2 * Math.PI * 86;
+$('fg').style.strokeDasharray = C;
+const haptic = {
+  tap: () => tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred('light'),
+  ok: () => tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('success'),
+  err: () => tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred('error'),
+};
+
+let S = null, fetchedAt = 0, wasBusy = false, timer = null;
+
+async function api(path, body) {
+  const opts = { headers: { 'X-Init-Data': tg ? tg.initData : '' } };
+  if (body) { opts.method = 'POST'; opts.body = JSON.stringify(body); opts.headers['Content-Type'] = 'application/json'; }
+  const r = await fetch(path, opts);
+  let data = {};
+  try { data = await r.json(); } catch (e) {}
+  return { status: r.status, data };
+}
+
+function dur(sec) { const m = Math.floor(sec / 60); return Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0'); }
+
+function tempAt(pos, steps) {
+  const s35 = steps['35'], s70 = steps['70'];
+  if (pos <= 0) return 0;
+  if (pos < s35) return 35 * pos / s35;
+  return 35 + 35 * (pos - s35) / (s70 - s35);
+}
+
+function renderBoiler(b, p) {
+  const busy = p.busy;
+  const sec = $('boiler');
+  sec.classList.toggle('busy', busy);
+  sec.classList.toggle('pumping', busy && p.stage === 'pump');
+
+  const pct = Math.max(0, Math.min(1, b.pos / b.max));
+  const hue = 210 - pct * 200;
+  $('fg').style.strokeDashoffset = C * (1 - pct);
+  $('fg').style.stroke = pct === 0 ? 'var(--muted)' : `hsl(${hue} 90% 58%)`;
+  $('fg').style.color = $('fg').style.stroke;
+
+  const t = tempAt(b.pos, b.steps);
+  $('big').textContent = (busy || b.mode !== 'off') && t > 0 ? Math.round(t) + '°' : 'Выкл';
+  $('sub').textContent = b.mode === 'off' && !busy ? 'котёл выключен'
+    : b.mode === 'self' && !busy ? 'самообогрев' : busy ? 'идёт настройка' : 'обогрев храма';
+
+  const st = $('status');
+  st.className = 'status';
+  if (busy && p.stage === 'motor') {
+    st.innerHTML = `<b>${p.title}…</b><span>мотор: ${p.done} из ${p.total || '…'} шагов</span>`;
+    $('barfill').style.width = (p.total ? p.done / p.total * 100 : 0) + '%';
+  } else if (busy && p.stage === 'pump') {
+    st.innerHTML = `<b>Переключаю насос…</b><span>почти готово</span>`;
+  } else if (busy) {
+    st.innerHTML = `<b>${p.title || 'Запускаю…'}</b><span>подождите</span>`;
+    $('barfill').style.width = '0%';
+  } else if (p.result === 'error' && p.ago !== null && p.ago < 20) {
+    st.className = 'status err';
+    st.innerHTML = '<b>⚠️ Насос не переключился</b><span>котёл выставлен, проверьте розетку насоса</span>';
+  } else if (p.result === 'ok' && p.ago !== null && p.ago < 6) {
+    st.className = 'status ok';
+    st.innerHTML = '<b>✅ Готово</b><span>режим применён</span>';
+  } else {
+    const txt = b.mode === 'off' ? 'Котёл и насос выключены'
+      : b.mode === 'self' ? 'Котёл 35°C, насос выключен' : `Котёл ${b.temp}°C, насос включён`;
+    st.innerHTML = `<b>${b.mode === 'off' ? '⛔️ Выключено' : b.mode === 'self' ? '🏠 Самообогрев' : '🔥 Обогрев храма'}</b><span>${txt}</span>`;
+  }
+
+  const pm = $('pump'), pu = b.pump;
+  pm.className = 'pill ' + (!pu.ok ? 'na' : pu.on ? 'on' : '');
+  $('pumpT').textContent = !pu.ok ? '💧 Насос: недоступно' : pu.on ? '💧 Насос работает' : '💧 Насос выключен';
+  $('pumpS').textContent = !pu.ok ? (pu.last_seen ? 'последний ответ ' + pu.last_seen : 'нет связи с розеткой') : pu.voltage + ' В';
+
+  document.querySelector('[data-act=mode_off]').classList.toggle('active', b.mode === 'off');
+  document.querySelector('[data-act=mode_self]').classList.toggle('active', b.mode === 'self');
+  document.querySelectorAll('#temps button').forEach(el => {
+    el.classList.toggle('active', b.mode === 'temple' && Number(el.dataset.temp) === b.temp);
+  });
+  sec.querySelectorAll('button').forEach(el => el.disabled = busy);
+}
+
+function renderRelay(r) {
+  const emo = $('relayEmo'), t = $('relayT'), s = $('relayS');
+  if (!r.ok) {
+    emo.textContent = '⚠️'; t.textContent = 'Недоступно';
+    s.textContent = r.last_seen ? 'последний ответ ' + r.last_seen : 'нет связи с устройством';
+    ['rV', 'rA', 'rW'].forEach(i => $(i).textContent = '—');
+  } else {
+    emo.textContent = r.on ? '✅' : '⭕️'; t.textContent = r.on ? 'Включено' : 'Выключено'; s.textContent = '';
+    $('rV').textContent = r.voltage; $('rA').textContent = r.current.toFixed(3); $('rW').textContent = r.power;
+  }
+}
+
+function renderLight(l) {
+  const emo = $('lightEmo'), t = $('lightT');
+  $('lightBtns').hidden = !S.features.includes('admin');
+  if (!l.ok) {
+    emo.textContent = '⚠️'; t.textContent = 'Нет связи с облаком';
+    $('lightS').dataset.base = ''; $('lightS').textContent = l.known === null ? '' : 'последнее известное: свет ' + (l.known ? 'есть' : 'нет');
+    ['lV', 'lW', 'lL'].forEach(i => $(i).textContent = '—');
+    return;
+  }
+  emo.textContent = l.online ? '💡' : '🌑';
+  t.textContent = l.online ? 'Свет есть' : 'Света нет';
+  const s = $('lightS');
+  if (l.since !== null) { s.dataset.base = l.since; s.dataset.label = l.online ? 'Присутствует' : 'Отсутствует'; }
+  else { s.dataset.base = ''; s.textContent = ''; }
+  $('lV').textContent = l.online ? l.voltage : '—';
+  $('lW').textContent = l.online ? l.power : '—';
+  $('lL').textContent = l.online ? (l.lamp ? 'вкл' : 'выкл') : '—';
+  tickLight();
+}
+
+function tickLight() {
+  const s = $('lightS');
+  if (s.dataset.base) s.textContent = s.dataset.label + ': ' + dur(Number(s.dataset.base) + (Date.now() - fetchedAt) / 1000);
+}
+setInterval(tickLight, 1000);
+
+function render() {
+  const f = S.features;
+  $('role').textContent = S.role;
+  $('boiler').hidden = !f.includes('boiler');
+  $('relay').hidden = !f.includes('relay');
+  $('light').hidden = !f.includes('light');
+  $('schedule').hidden = !f.includes('schedule');
+  $('history').hidden = !f.includes('history');
+  if (S.schedules) renderSchedules();
+  if (S.boiler) renderBoiler(S.boiler, S.progress);
+  if (S.relay) renderRelay(S.relay);
+  if (S.light) renderLight(S.light);
+  if (wasBusy && !S.progress.busy) { (S.progress.result === 'ok' ? haptic.ok : haptic.err)(); loadHistory(true); }
+  wasBusy = S.progress.busy;
+}
+
+function denied(title, text) {
+  ['boiler', 'relay', 'light', 'schedule', 'history'].forEach(i => $(i).hidden = true);
+  $('denied').hidden = false; $('deniedTitle').textContent = title; $('deniedText').textContent = text;
+}
+
+async function poll() {
+  clearTimeout(timer);
+  let delay = 3000;
+  try {
+    const { status, data } = await api('/api/state');
+    if (status === 200) {
+      S = data; fetchedAt = Date.now(); $('denied').hidden = true; render();
+      delay = S.progress.busy ? 300 : 3000;
+      $('foot').textContent = '';
+    } else if (status === 403) {
+      denied('Нет доступа', 'Откройте чат с ботом и введите код доступа, затем снова откройте панель.'); delay = 8000;
+    } else {
+      denied('Откройте из Telegram', 'Панель работает только внутри Telegram.'); delay = 15000;
+    }
+  } catch (e) {
+    $('foot').textContent = '⚠️ нет связи с Raspberry, пробую снова…';
+    delay = 4000;
+  }
+  timer = setTimeout(poll, delay);
+}
+
+async function act(body, okText) {
+  haptic.tap();
+  const { status, data } = await api('/api/action', body);
+  if (status === 409) { toast('Мотор сейчас занят, подождите несколько секунд'); }
+  else if (status !== 200 || data.ok === false) { haptic.err(); toast('⚠️ Команда не выполнена'); }
+  else if (okText) { toast(okText); }
+  poll();
+  setTimeout(() => loadHistory(true), 1500);
+}
+
+
+function toast(text) {
+  const t = $('toast'); t.textContent = text; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600);
+}
+const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+function daysText(d) {
+  d = [...d].sort();
+  if (d.length === 7) return 'Каждый день';
+  if (d.join() === '0,1,2,3,4') return 'Будни';
+  if (d.join() === '5,6') return 'Выходные';
+  return d.map(i => DAYS[i]).join(', ');
+}
+function actText(a, t) { return a === 'off' ? '⛔️ Выключить котёл и насос' : a === 'self' ? '🏠 Самообогрев котельной' : `🔥 Обогрев храма ${t}°`; }
+
+let schedSig = '';
+function renderSchedules() {
+  const list = S.schedules || [];
+  const sig = JSON.stringify([list, S.next]);
+  if (sig === schedSig) return;
+  schedSig = sig;
+  $('schedNext').textContent = !list.length ? '' : S.next ? '🔜 Ближайшее: ' + S.next : 'Все расписания приостановлены';
+  const box = $('schedList'); box.innerHTML = '';
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">Расписаний пока нет.<br>Например: каждый день в 06:00 — обогрев храма 50°</div>';
+  }
+  list.forEach(sc => {
+    const row = document.createElement('div');
+    row.className = 'sched' + (sc.enabled ? '' : ' off');
+    row.innerHTML = `<div class="time">${sc.time}</div>
+      <div class="info"><b>${sc.title}</b><span>${sc.days_text}${sc.enabled ? (sc.next ? ' · ' + sc.next : '') : ' · приостановлено'}</span></div>`;
+    const sw = document.createElement('button'); sw.className = 'sw' + (sc.enabled ? ' on' : ''); sw.setAttribute('aria-label', 'Включить или приостановить');
+    sw.onclick = () => act({ action: 'sched_toggle', id: sc.id }, sc.enabled ? 'Расписание приостановлено' : 'Расписание включено');
+    const del = document.createElement('button'); del.className = 'trash'; del.textContent = '🗑'; del.setAttribute('aria-label', 'Удалить');
+    del.onclick = () => confirmDo(`Удалить расписание?\n${sc.time} · ${sc.days_text}\n${sc.title}`, () => act({ action: 'sched_delete', id: sc.id }, 'Расписание удалено'));
+    row.append(sw, del); box.appendChild(row);
+  });
+  $('schedAdd').hidden = list.length >= (S.max_schedules || 20);
+}
+
+function confirmDo(text, fn) {
+  if (tg && tg.showConfirm) tg.showConfirm(text, ok => ok && fn()); else if (confirm(text)) fn();
+}
+
+// ---- add form ----
+const F = { action: 'temple', temp: 45, days: [0, 1, 2, 3, 4, 5, 6] };
+function renderForm() {
+  document.querySelectorAll('#fAction button').forEach(b => b.classList.toggle('active', b.dataset.v === F.action));
+  $('fTempBox').hidden = F.action !== 'temple';
+  document.querySelectorAll('#fTemp button').forEach(b => b.classList.toggle('active', Number(b.dataset.t) === F.temp));
+  document.querySelectorAll('#fDays button').forEach(b => b.classList.toggle('active', F.days.includes(Number(b.dataset.d))));
+  const time = fTime();
+  $('fSummary').textContent = F.days.length ? `${daysText(F.days)} в ${time} — ${actText(F.action, F.temp)}` : 'Выберите хотя бы один день';
+  $('fSave').disabled = !F.days.length;
+}
+function openSheet() { $('veil').classList.add('show'); $('sheet').classList.add('show'); renderForm(); haptic.tap(); }
+function closeSheet() { $('veil').classList.remove('show'); $('sheet').classList.remove('show'); }
+document.querySelectorAll('#fAction button').forEach(b => b.onclick = () => { F.action = b.dataset.v; renderForm(); });
+[35, 40, 45, 50, 55, 60, 65, 70].forEach(t => {
+  const b = document.createElement('button'); b.textContent = t + '°'; b.dataset.t = t;
+  b.onclick = () => { F.temp = t; renderForm(); }; $('fTemp').appendChild(b);
+});
+DAYS.forEach((n, i) => {
+  const b = document.createElement('button'); b.textContent = n; b.dataset.d = i;
+  b.onclick = () => { F.days = F.days.includes(i) ? F.days.filter(x => x !== i) : [...F.days, i].sort(); renderForm(); };
+  $('fDays').appendChild(b);
+});
+document.querySelectorAll('#fPresets button').forEach(b => b.onclick = () => {
+  F.days = { all: [0, 1, 2, 3, 4, 5, 6], work: [0, 1, 2, 3, 4], end: [5, 6] }[b.dataset.p]; renderForm();
+});
+for (let i = 0; i < 24; i++) $('fH').add(new Option(String(i).padStart(2, '0'), String(i).padStart(2, '0')));
+for (let i = 0; i < 60; i += 5) $('fM').add(new Option(String(i).padStart(2, '0'), String(i).padStart(2, '0')));
+$('fH').value = '06'; $('fM').value = '00';
+$('fH').onchange = $('fM').onchange = renderForm;
+function fTime() { return $('fH').value + ':' + $('fM').value; }
+$('schedAdd').onclick = openSheet;
+$('fCancel').onclick = closeSheet; $('veil').onclick = closeSheet;
+$('fSave').onclick = async () => {
+  const { status, data } = await api('/api/action', { action: 'sched_add', sched: { action: F.action, temp: F.action === 'temple' ? F.temp : null, time: fTime(), days: F.days } });
+  if (status === 200 && data.ok) { closeSheet(); haptic.ok(); toast('✅ Расписание добавлено'); poll(); loadHistory(true); }
+  else { haptic.err(); toast('Не удалось сохранить расписание'); }
+};
+
+// ---- history ----
+let hist = { kind: 'all', items: [], more: false, loading: false };
+[['all', 'Все'], ['boiler', 'Котёл'], ['light', 'Свет']].forEach(([k, n]) => {
+  const b = document.createElement('button'); b.textContent = n; b.dataset.k = k;
+  b.onclick = () => { hist.kind = k; hist.items = []; loadHistory(true); }; $('histFilters').appendChild(b);
+});
+async function loadHistory(reset) {
+  if (!S || !S.features.includes('history') || hist.loading) return;
+  hist.loading = true;
+  try {
+    const off = reset ? 0 : hist.items.length;
+    const { status, data } = await api(`/api/history?offset=${off}&limit=15&kind=${hist.kind}`);
+    if (status === 200) {
+      hist.items = reset ? data.items : hist.items.concat(data.items); hist.more = data.more; renderHistory();
+    }
+  } catch (e) {}
+  hist.loading = false;
+}
+function renderHistory() {
+  document.querySelectorAll('#histFilters button').forEach(b => b.classList.toggle('active', b.dataset.k === hist.kind));
+  const box = $('histList'); box.innerHTML = '';
+  if (!hist.items.length) { box.innerHTML = '<div class="empty">Пока записей нет</div>'; }
+  let last = null;
+  hist.items.forEach(e => {
+    if (e.day !== last) { const d = document.createElement('div'); d.className = 'day'; d.textContent = e.day; box.appendChild(d); last = e.day; }
+    const row = document.createElement('div'); row.className = 'ev';
+    const t = document.createElement('div'); t.className = 't'; t.textContent = e.time;
+    const x = document.createElement('div'); x.className = 'x'; x.textContent = e.text;
+    if (e.who) { const w = document.createElement('span'); w.className = 'w'; w.textContent = e.who; x.appendChild(w); }
+    row.append(t, x); box.appendChild(row);
+  });
+  $('histMore').hidden = !hist.more;
+}
+$('histMore').onclick = () => loadHistory(false);
+setInterval(() => { if (hist.items.length <= 15) loadHistory(true); }, 10000);
+
+const temps = $('temps');
+[35, 40, 45, 50, 55, 60, 65, 70].forEach(t => {
+  const b = document.createElement('button');
+  b.textContent = t + '°'; b.dataset.temp = t;
+  b.onclick = () => act({ action: 'set_temp', temp: t });
+  temps.appendChild(b);
+});
+document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => act({ action: b.dataset.act }));
+poll();
+setTimeout(() => loadHistory(true), 800);
+</script>
+</body>
+</html>

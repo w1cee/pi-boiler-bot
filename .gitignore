@@ -1,0 +1,10 @@
+.env
+devices.json
+tinytuya.json
+motor_state.json*
+history.jsonl
+*.corrupt-*
+__pycache__/
+*.pyc
+venv/
+.venv/

@@ -1,0 +1,14 @@
+[Unit]
+Description=Pi Boiler Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/pi-boiler-bot
+ExecStart=/usr/bin/python3 /home/pi/pi-boiler-bot/bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

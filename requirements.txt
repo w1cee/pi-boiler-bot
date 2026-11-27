@@ -1,0 +1,4 @@
+pyTelegramBotAPI
+tinytuya
+python-dotenv
+RPi.GPIO

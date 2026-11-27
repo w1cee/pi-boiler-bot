@@ -1,0 +1,4 @@
+[
+  {"name": "WiFi Socket", "id": "DEVICE_ID", "ip": "192.168.1.50", "key": "LOCAL_KEY", "version": "3.4"},
+  {"name": "DIN-rail relay", "id": "DEVICE_ID", "ip": "192.168.1.51", "key": "LOCAL_KEY", "version": "3.4"}
+]
